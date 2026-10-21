@@ -49,6 +49,22 @@ npm start
 npm run widget
 ```
 
+### 方式 3：直接运行 Release 独立可执行程序
+构建生成的 Release 独立版无需任何 Node.js/终端环境，可直接双击运行：
+```
+desktop-widget/dist/Super Focus Widget-win32-x64/Super Focus Widget.exe
+```
+或者解压分发归档包：
+```
+desktop-widget/dist/Super-Focus-Widget-v1.0.0-win32-x64.zip
+```
+
+如果要重新构建 Release 包：
+```bash
+cd desktop-widget
+npm run dist
+```
+
 ---
 
 ## ⚙️ 如何连接 Super Productivity
