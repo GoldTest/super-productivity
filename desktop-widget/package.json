@@ -1,0 +1,19 @@
+{
+  "name": "super-productivity-desktop-widget",
+  "version": "1.0.0",
+  "description": "Clean, glassmorphic desktop floating companion widget for Super Productivity",
+  "main": "main.js",
+  "scripts": {
+    "start": "npx electron .",
+    "widget": "npx electron ."
+  },
+  "keywords": [
+    "super-productivity",
+    "widget",
+    "floating-window",
+    "pomodoro",
+    "tasks"
+  ],
+  "author": "",
+  "license": "MIT"
+}

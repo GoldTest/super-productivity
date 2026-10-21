@@ -18,6 +18,7 @@
   "author": "Johannes Millan <contact@super-productivity.com> (http://super-productivity.com)",
   "main": "./electron/main.js",
   "scripts": {
+    "widget": "npx electron ./desktop-widget",
     "env": "node ./tools/load-env.js",
     "assemble:android:prod": "cd android && ./gradlew assembleRelease && cd ..",
     "assemble:android:stage": "cd android && ./gradlew assembleDebug && cd ..",

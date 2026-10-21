@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>Super Productivity Floating Widget</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div id="app-window">
+    <!-- ── Collapsed Mini Bar (Compact Slim Bar) ── -->
+    <div id="mini-bar">
+      <span id="mini-task-title" class="mini-task-title" title="当前专注任务">未开始专注</span>
+      <span id="mini-timer-text" class="mini-timer-text">25:00</span>
+    </div>
+
+    <!-- ── Expanded Content Area ── -->
+    <div class="expanded-content" style="display: flex; flex-direction: column; flex: 1; min-height: 0;">
+      <!-- ── Header ── -->
+      <header class="window-header">
+        <div class="brand-section">
+          <span class="brand-title">Super Focus</span>
+        </div>
+        <div class="header-controls">
+          <button id="btn-pin" class="icon-btn pinned" title="置顶悬浮 (Always on Top)">📌</button>
+          <button id="btn-settings" class="icon-btn" title="设置">⚙️</button>
+          <button id="btn-minimize" class="icon-btn" title="最小化">−</button>
+          <button id="btn-close" class="icon-btn close" title="关闭">×</button>
+        </div>
+      </header>
+
+      <!-- ── Focus Timer Card ── -->
+      <section class="focus-card">
+        <div class="focus-info">
+          <div class="focus-header-row">
+            <span id="focus-mode-badge" class="focus-badge">FOCUS</span>
+            <span id="focus-cycle-text" style="font-size: 10px; color: var(--text-dim);">#1</span>
+          </div>
+          <div id="focus-task-title" class="focus-task-title">未开始任务</div>
+          <div id="focus-timer-text" class="focus-timer-text">25:00</div>
+        </div>
+        <div class="focus-actions">
+          <button id="btn-timer-toggle" class="timer-btn" title="开始/暂停">▶</button>
+          <button id="btn-timer-reset" class="timer-btn-sub" title="重置/跳过">↻</button>
+        </div>
+      </section>
+
+      <!-- ── Project & List Tabs (Requirement 2 & 4: 只有今日 + 各项目Tab) ── -->
+      <section class="list-selector-container">
+        <div id="list-pills-row" class="list-pills-row">
+          <!-- Dynamically populated: 📅 今日 + 项目Tabs -->
+          <button class="pill-tab active" data-filter="today">📅 今日</button>
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 2px;">
+          <span id="task-stats-text" class="task-stats">0 个任务</span>
+          <button id="btn-refresh" class="icon-btn" style="width: 20px; height: 20px; font-size: 10px;" title="立即刷新">🔄</button>
+        </div>
+      </section>
+
+      <!-- ── Tasks Scroll Area ── -->
+      <main id="tasks-container" class="tasks-scroll-area">
+        <div class="empty-state">加载中...</div>
+      </main>
+
+      <!-- ── Quick Add Task (Requirement 5: 添加到当前项目/今日) ── -->
+      <footer class="quick-add-container">
+        <form id="quick-add-form" class="quick-add-form">
+          <input id="quick-add-input" class="quick-add-input" type="text" placeholder="+ 添加任务 (回车提交)..." autocomplete="off" />
+          <button type="submit" class="add-submit-btn" title="添加">↵</button>
+        </form>
+      </footer>
+    </div>
+
+    <!-- ── Toast Notification Banner ── -->
+    <div id="toast-banner" class="toast-banner">
+      <span id="toast-icon">🔔</span>
+      <span id="toast-message">专注时间已结束！休息一下吧。</span>
+    </div>
+
+    <!-- ── Settings Modal ── -->
+    <div id="settings-modal" class="modal-overlay">
+      <div class="modal-card">
+        <div class="modal-header">
+          <span class="modal-title">小部件设置</span>
+          <button id="btn-close-settings" class="icon-btn">×</button>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">REST API 服务地址</label>
+          <input id="cfg-server-url" class="form-input" type="text" value="http://127.0.0.1:3876" />
+        </div>
+
+        <div class="form-group">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <label class="form-label">API 访问 Token (Bearer)</label>
+            <button id="btn-detect-token" class="btn-secondary" style="padding: 2px 8px; font-size: 10px;">⚡ 自动检测</button>
+          </div>
+          <input id="cfg-token" class="form-input" type="password" placeholder="从主程序设置中复制或自动检测" />
+        </div>
+
+        <div class="form-group">
+          <div class="slider-row">
+            <label class="form-label" style="min-width: 60px;">半透明度</label>
+            <input id="cfg-opacity" class="slider-input" type="range" min="35" max="100" value="94" />
+            <span id="opacity-val-text" style="font-size: 11px; color: var(--text-muted); width: 32px;">94%</span>
+          </div>
+        </div>
+
+        <div class="form-row-checkbox">
+          <span>屏幕贴边吸附</span>
+          <input id="cfg-snap-edge" type="checkbox" checked />
+        </div>
+
+        <div class="form-row-checkbox">
+          <span>贴边离开自动收起为小横条</span>
+          <input id="cfg-auto-collapse" type="checkbox" checked />
+        </div>
+
+        <div class="form-row-checkbox">
+          <span>自动提醒音效</span>
+          <input id="cfg-sound" type="checkbox" checked />
+        </div>
+
+        <div class="btn-row">
+          <button id="btn-cancel-settings" class="btn-secondary">取消</button>
+          <button id="btn-save-settings" class="btn-primary">保存配置</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="renderer.js"></script>
+</body>
+</html>
