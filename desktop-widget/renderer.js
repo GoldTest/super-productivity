@@ -594,12 +594,107 @@ async function handleAddTask(title) {
   }
 }
 
+// ── Task Sorting Rule (未完成在前，已安排时间优先升序，无时间最新创建在前，已完成沉底) ──
+function getTaskScheduledTime(task) {
+  if (typeof task.dueWithTime === 'number' && task.dueWithTime > 0) return task.dueWithTime;
+  if (typeof task.remindAt === 'number' && task.remindAt > 0) return task.remindAt;
+  if (typeof task.deadlineWithTime === 'number' && task.deadlineWithTime > 0) return task.deadlineWithTime;
+  if (task.dueDay && typeof task.dueDay === 'string') {
+    const t = new Date(task.dueDay).getTime();
+    if (!isNaN(t) && t > 0) return t;
+  }
+  if (task.deadlineDay && typeof task.deadlineDay === 'string') {
+    const t = new Date(task.deadlineDay).getTime();
+    if (!isNaN(t) && t > 0) return t;
+  }
+  if (typeof task.plannedAt === 'number' && task.plannedAt > 0) return task.plannedAt;
+  return null;
+}
+
+function compareTasks(a, b) {
+  // 1. 未完成排在最前，已完成自动沉底
+  if (a.isDone !== b.isDone) {
+    return a.isDone ? 1 : -1;
+  }
+
+  // 2. 时间排序判定
+  const timeA = getTaskScheduledTime(a);
+  const timeB = getTaskScheduledTime(b);
+
+  const hasTimeA = timeA !== null;
+  const hasTimeB = timeB !== null;
+
+  // 2.1 优先排已安排时间的任务
+  if (hasTimeA !== hasTimeB) {
+    return hasTimeA ? -1 : 1;
+  }
+
+  // 2.2 两者都有安排时间：按照安排的时间从上到下排序（较早的时间在上，升序）
+  if (hasTimeA && hasTimeB) {
+    if (timeA !== timeB) {
+      return timeA - timeB;
+    }
+  }
+
+  // 2.3 两者都没有安排时间：按照最新创建的在上排序（创建时间倒序）
+  const createdA = typeof a.created === 'number'
+    ? a.created
+    : (typeof a.id === 'string' && a.id.startsWith('local-') ? parseInt(a.id.replace('local-', ''), 10) : 0);
+  const createdB = typeof b.created === 'number'
+    ? b.created
+    : (typeof b.id === 'string' && b.id.startsWith('local-') ? parseInt(b.id.replace('local-', ''), 10) : 0);
+
+  if (createdA !== createdB) {
+    return createdB - createdA;
+  }
+
+  return 0;
+}
+
+// ── Today Task Detection (Matches Super Productivity Virtual Tag Pattern) ──
+function getTodayDateStr() {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = (now.getMonth() + 1).toString().padStart(2, '0');
+  const d = now.getDate().toString().padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+function isTaskForToday(task) {
+  // 1. Explicit TODAY tag
+  if (task.tagIds && task.tagIds.includes('TODAY')) return true;
+
+  const todayStr = getTodayDateStr();
+
+  // 2. All-day scheduled date
+  if (task.dueDay && task.dueDay === todayStr) return true;
+
+  // 3. Specific-time scheduled task (dueWithTime: e.g. "Later Today / 今天晚些时候")
+  if (typeof task.dueWithTime === 'number' && task.dueWithTime > 0) {
+    const d = new Date(task.dueWithTime);
+    const dateStr = `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, '0')}-${d.getDate().toString().padStart(2, '0')}`;
+    if (dateStr === todayStr) return true;
+  }
+
+  // 4. Deadlines
+  if (task.deadlineDay && task.deadlineDay === todayStr) return true;
+  if (typeof task.deadlineWithTime === 'number' && task.deadlineWithTime > 0) {
+    const d = new Date(task.deadlineWithTime);
+    const dateStr = `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, '0')}-${d.getDate().toString().padStart(2, '0')}`;
+    if (dateStr === todayStr) return true;
+  }
+
+  return false;
+}
+
 // ── Render Tasks (Anti-flicker: Only update DOM if task list data actually changed) ──
 function renderTasks() {
   let filtered = state.tasks;
 
   if (state.currentTab === 'today') {
-    filtered = state.tasks.filter((t) => (t.tagIds && t.tagIds.includes('TODAY')) || t.dueDay);
+    // If connected, REST API (/tasks?tagId=TODAY) already returns all today tasks;
+    // For local demo or fallback safety, use isTaskForToday which supports dueWithTime!
+    filtered = state.isConnected ? state.tasks : state.tasks.filter(isTaskForToday);
   } else {
     filtered = state.tasks.filter((t) => t.projectId === state.currentTab);
   }
@@ -640,6 +735,17 @@ function renderTasks() {
       ? `<span class="tag-badge">${directChildren.filter((s) => s.isDone).length}/${directChildren.length} 子任务</span>`
       : '';
 
+    // Scheduled time badge if present
+    let scheduleBadge = '';
+    if (typeof task.dueWithTime === 'number' && task.dueWithTime > 0) {
+      const d = new Date(task.dueWithTime);
+      const hours = d.getHours().toString().padStart(2, '0');
+      const mins = d.getMinutes().toString().padStart(2, '0');
+      scheduleBadge = `<span class="tag-badge" style="color: #67e8f9;">🕒 ${hours}:${mins}</span>`;
+    } else if (task.dueDay) {
+      scheduleBadge = `<span class="tag-badge" style="color: #67e8f9;">📅 ${task.dueDay.slice(5)}</span>`;
+    }
+
     const prefix = isSubtask ? '<span class="subtask-branch-icon">↳</span>' : '';
 
     item.innerHTML = `
@@ -649,6 +755,7 @@ function renderTasks() {
           ${prefix}${task.title}
         </div>
         <div class="task-meta-line">
+          ${scheduleBadge}
           ${timeBadge ? `<span class="tag-badge">⏱ ${timeBadge}</span>` : ''}
           ${subtaskBadge}
           ${isCurrent ? '<span class="tag-badge" style="color: var(--accent-light);">● 专注中</span>' : ''}
@@ -680,28 +787,29 @@ function renderTasks() {
     return item;
   }
 
-  // 1. First pass: render root tasks
-  filtered.forEach((task) => {
-    if (task.parentId && taskMap.has(task.parentId)) {
-      return;
-    }
+  // 1. Group & Sort root tasks according to requested hierarchy
+  const rootTasks = filtered.filter((t) => !t.parentId || !taskMap.has(t.parentId));
+  rootTasks.sort(compareTasks);
 
+  rootTasks.forEach((task) => {
     elements.tasksContainer.appendChild(createTaskItem(task, false));
     renderedIds.add(task.id);
 
+    // Subtasks for this parent, also sorted by the exact same rule!
     const children = filtered.filter((t) => t.parentId === task.id);
+    children.sort(compareTasks);
     children.forEach((child) => {
       elements.tasksContainer.appendChild(createTaskItem(child, true));
       renderedIds.add(child.id);
     });
   });
 
-  // 2. Second pass: any remaining orphaned tasks
-  filtered.forEach((task) => {
-    if (!renderedIds.has(task.id)) {
-      elements.tasksContainer.appendChild(createTaskItem(task, !!task.parentId));
-      renderedIds.add(task.id);
-    }
+  // 2. Any remaining orphaned tasks, sorted as well
+  const orphanedTasks = filtered.filter((t) => !renderedIds.has(t.id));
+  orphanedTasks.sort(compareTasks);
+  orphanedTasks.forEach((task) => {
+    elements.tasksContainer.appendChild(createTaskItem(task, !!task.parentId));
+    renderedIds.add(task.id);
   });
 }
 
